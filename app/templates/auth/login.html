@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h2>Login</h2>
+        <form method="POST">
+            {{ form.hidden_tag() }}
+
+            <div>
+                {{ form.email.label }}<br>
+                {{ form.email(class="form-control") }}
+            </div>
+
+            <div>
+                {{ form.password.label }}<br>
+                {{ form.password(class="form-control") }}
+            </div>
+
+            <div>
+                {{ form.submit(class="btn btn-primary") }}
+            </div>
+        </form>
+
+        <p>Don't have an account?</p>
+        <ul>
+            <li><a href="{{ url_for('signup_user') }}">Register as Patient</a></li>
+            <!-- <li><a href="{{ url_for('signup_doctor') }}">Register as Doctor</a></li> -->
+        </ul>
+    </div>
+</body>
+</html>

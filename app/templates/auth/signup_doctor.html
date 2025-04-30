@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Doctor Sign Up</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h2>Sign Up as Doctor</h2>
+        <form method="POST">
+            {{ form.hidden_tag() }}
+
+            <div>
+                {{ form.name.label }}<br>
+                {{ form.name(class="form-control") }}
+            </div>
+
+            <div>
+                {{ form.email.label }}<br>
+                {{ form.email(class="form-control") }}
+            </div>
+
+            <div>
+                {{ form.phone.label }}<br>
+                {{ form.phone(class="form-control") }}
+            </div>
+
+            <div>
+                {{ form.dob.label }}<br>
+                {{ form.dob(class="form-control") }}
+            </div>
+
+            <div>
+                {{ form.gender.label }}<br>
+                {{ form.gender(class="form-control") }}
+            </div>
+
+            <div>
+                {{ form.marital_status.label }}<br>
+                {{ form.marital_status(class="form-control") }}
+            </div>
+
+            <div>
+                {{ form.address.label }}<br>
+                {{ form.address(class="form-control") }}
+            </div>
+
+            <div>
+                {{ form.state.label }}<br>
+                {{ form.state(class="form-control") }}
+            </div>
+
+            <div>
+                {{ form.hospital_id.label }}<br>
+                {{ form.hospital_id(class="form-control") }}
+            </div>
+
+            <div>
+                {{ form.password.label }}<br>
+                {{ form.password(class="form-control") }}
+            </div>
+
+            <div>
+                {{ form.submit(class="btn btn-primary") }}
+            </div>
+        </form>
+
+        <p>Already have an account? <a href="{{ url_for('login') }}">Login here</a>.</p>
+    </div>
+</body>
+</html>
