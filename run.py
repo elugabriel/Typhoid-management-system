@@ -8,7 +8,7 @@ from flask_login import UserMixin
 import os
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
-
+import random 
 
 # === App Config ===
 
@@ -56,7 +56,7 @@ class Doctor(db.Model):
     gender = db.Column(db.String(10), nullable=False)
     marital_status = db.Column(db.String(20), nullable=False)
     address = db.Column(db.String(200), nullable=False)
-    state = db.Column(db.String(50), nullable=False)
+    state = db.Column(db.String(50), nullable=False)  # This field links doctors to their state
     hospital_id = db.Column(db.Integer, db.ForeignKey('hospital.id'), nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
 
@@ -64,6 +64,33 @@ class Doctor(db.Model):
 
     def __repr__(self):
         return f'<Doctor {self.name}>'
+
+
+    def __repr__(self):
+        return f'<Doctor {self.name}>'
+    
+class SymptomAssessment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    date = db.Column(db.DateTime, default=db.func.now())
+    symptoms = db.Column(db.Text, nullable=False)
+    result = db.Column(db.String(200), nullable=False)
+
+    user = db.relationship('User', backref=db.backref('assessments', lazy=True))
+
+class Consultation(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    doctor_id = db.Column(db.Integer, db.ForeignKey('doctor.id'), nullable=False)
+    status = db.Column(db.String(20), default='Pending')
+    consultation_date = db.Column(db.DateTime, default=db.func.now())
+
+    user = db.relationship('User', backref=db.backref('consultations', lazy=True))
+    doctor = db.relationship('Doctor', backref=db.backref('consultations', lazy=True))
+
+    def __repr__(self):
+        return f'<Consultation {self.id}>'
+
 
 # === FORMS ===
 class UserSignUpForm(FlaskForm):
@@ -106,7 +133,16 @@ class UpdateProfileForm(FlaskForm):
     state = StringField('State', validators=[DataRequired()])
     submit = SubmitField('Update Profile')
 
-
+class ConsultationBookingForm(FlaskForm):
+    name = StringField('Patient Name', validators=[DataRequired()])
+    phone = StringField('Phone Number', validators=[DataRequired()])
+    dob = DateField('Date of Birth', validators=[DataRequired()])
+    gender = SelectField('Gender', choices=[('Male', 'Male'), ('Female', 'Female')], validators=[DataRequired()])
+    marital_status = SelectField('Marital Status', choices=[('Single', 'Single'), ('Married', 'Married')], validators=[DataRequired()])
+    address = StringField('Address', validators=[DataRequired()])
+    state = StringField('State', validators=[DataRequired()])
+    submit = SubmitField('Book Consultation')
+    
 # === ROUTES ===
 @app.route('/')
 def home():
@@ -193,6 +229,114 @@ def logout():
     logout_user()
     flash('You have been logged out.', 'success')
     return redirect(url_for('home'))
+
+@app.route('/symptom-assessment')
+@login_required
+def symptom_assessment():
+    assessments = SymptomAssessment.query.filter_by(user_id=current_user.id).order_by(SymptomAssessment.date.desc()).all()
+    return render_template('user_assessment.html', assessments=assessments, user=current_user)
+
+
+
+@app.route('/book-consultation', methods=['GET', 'POST'])
+@login_required
+def book_consultation():
+    form = ConsultationBookingForm()
+
+    # Fetch the current user's state
+    user_state = current_user.state
+
+    # Fetch doctors based on the user's state and the first available doctor
+    doctor = Doctor.query.filter_by(state=user_state).first()
+
+    if not doctor:
+        flash('No doctor available in your state at the moment.', 'danger')
+        return redirect(url_for('user_dashboard'))
+
+    # Pre-fill the form with the patient's details
+    if request.method == 'GET':  # On GET request, pre-fill the form
+        form.name.data = current_user.name
+        form.phone.data = current_user.phone
+        form.dob.data = current_user.dob
+        form.gender.data = current_user.gender
+        form.marital_status.data = current_user.marital_status
+        form.address.data = current_user.address
+        form.state.data = current_user.state
+
+    if form.validate_on_submit():
+        # Automatically assign the doctor
+        consultation = Consultation(
+            user_id=current_user.id,
+            doctor_id=doctor.id,  # Assign the doctor automatically based on the state
+            status="Pending"  # Default status is Pending
+        )
+        db.session.add(consultation)
+        db.session.commit()
+        flash('Your consultation has been booked and is pending approval.', 'success')
+        return redirect(url_for('user_dashboard'))
+
+    return render_template('user_consultations.html', form=form)
+
+    
+
+
+#======= Expert System Part ========
+SYMPTOM_RULES = {
+    # High-weight symptoms (strong indicators of typhoid)
+    'Fever': 2,
+    'Abdominal pain': 2,
+    'Rash': 2,
+
+    # Medium-weight symptoms (moderate indicators)
+    'Headache': 1,
+    'Loss of appetite': 1,
+    'Diarrhea': 1,
+    'Constipation': 1,
+    'Fatigue': 1,
+
+    # Low-weight or general symptoms (minimal or no impact)
+    'Cough': 0,
+    'Sneezing': 0,
+    'Runny nose': 0,
+    'Sore throat': 0,
+    'Mild body aches': 0,
+    'Itchy eyes': 0,
+    'Dizziness': 0,
+    'Nausea': 1,
+    'Joint pain': 0
+}
+
+
+@app.route('/new-assessment', methods=['GET', 'POST'])
+@login_required
+def new_assessment():
+    if request.method == 'POST':
+        selected_symptoms = request.form.getlist('symptoms')
+        total_score = sum(SYMPTOM_RULES.get(symptom, 0) for symptom in selected_symptoms)
+
+        if total_score >= 5:
+            result = 'High likelihood of typhoid. Please consult a doctor.'
+        elif 3 <= total_score < 5:
+            result = 'Moderate symptoms. Monitor closely and seek medical advice if symptoms persist.'
+        else:
+            result = 'Low likelihood of typhoid.'
+
+        new_assess = SymptomAssessment(
+            user_id=current_user.id,
+            symptoms=', '.join(selected_symptoms),
+            result=result
+        )
+        db.session.add(new_assess)
+        db.session.commit()
+
+        flash('Assessment submitted!', 'success')
+        return redirect(url_for('symptom_assessment'))
+
+    # Shuffle symptom list before rendering
+    symptoms = list(SYMPTOM_RULES.keys())
+    random.shuffle(symptoms)
+    return render_template('new_assessment.html', symptoms=[{'name': s} for s in symptoms])
+
 
 # === MAIN ===
 if __name__ == '__main__':

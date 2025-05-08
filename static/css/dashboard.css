@@ -1,0 +1,30 @@
+
+body {
+    background-color: #f8f9fa;
+}
+.dashboard-header {
+    background-color: rgba(2, 77, 146, 0.85);
+    color: white;
+    padding: 20px;
+    border-radius: 0.5rem;
+    margin-bottom: 30px;
+}
+.card {
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+.sidebar-actions {
+    background-color: #fff;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    padding: 20px;
+}
+.sidebar-actions a {
+    display: block;
+    padding: 10px 0;
+    color: #007bff;
+    text-decoration: none;
+}
+.sidebar-actions a:hover {
+    text-decoration: underline;
+}
