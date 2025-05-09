@@ -141,7 +141,9 @@ class ConsultationBookingForm(FlaskForm):
     marital_status = SelectField('Marital Status', choices=[('Single', 'Single'), ('Married', 'Married')], validators=[DataRequired()])
     address = StringField('Address', validators=[DataRequired()])
     state = StringField('State', validators=[DataRequired()])
+    doctor_id = SelectField('Select Doctor', coerce=int, validators=[DataRequired()])
     submit = SubmitField('Book Consultation')
+
     
 # === ROUTES ===
 @app.route('/')
@@ -246,12 +248,11 @@ def book_consultation():
     # Fetch the current user's state
     user_state = current_user.state
 
-    # Fetch doctors based on the user's state and the first available doctor
-    doctor = Doctor.query.filter_by(state=user_state).first()
+    # Fetch doctors based on the user's state
+    doctors_in_state = Doctor.query.filter_by(state=user_state).all()
 
-    if not doctor:
-        flash('No doctor available in your state at the moment.', 'danger')
-        return redirect(url_for('user_dashboard'))
+    # Update the doctor selection choices based on the doctors in the user's state
+    form.doctor_id.choices = [(doctor.id, doctor.name) for doctor in doctors_in_state]
 
     # Pre-fill the form with the patient's details
     if request.method == 'GET':  # On GET request, pre-fill the form
@@ -264,10 +265,10 @@ def book_consultation():
         form.state.data = current_user.state
 
     if form.validate_on_submit():
-        # Automatically assign the doctor
+        # Automatically assign doctor based on the selected doctor_id
         consultation = Consultation(
             user_id=current_user.id,
-            doctor_id=doctor.id,  # Assign the doctor automatically based on the state
+            doctor_id=form.doctor_id.data,  # Get the doctor from the form
             status="Pending"  # Default status is Pending
         )
         db.session.add(consultation)
@@ -275,9 +276,7 @@ def book_consultation():
         flash('Your consultation has been booked and is pending approval.', 'success')
         return redirect(url_for('user_dashboard'))
 
-    return render_template('user_consultations.html', form=form)
-
-    
+    return render_template('user_consultations.html', form=form, user=current_user)
 
 
 #======= Expert System Part ========
@@ -337,6 +336,19 @@ def new_assessment():
     random.shuffle(symptoms)
     return render_template('new_assessment.html', symptoms=[{'name': s} for s in symptoms])
 
+@app.route('/health-tips')
+@login_required
+def health_tips():
+    tips = [
+        "Stay hydrated by drinking at least 8 cups of water daily.",
+        "Exercise for at least 30 minutes every day.",
+        "Eat a balanced diet rich in fruits and vegetables.",
+        "Get at least 7-8 hours of quality sleep each night.",
+        "Take regular breaks during screen time to reduce eye strain.",
+        "Practice mindfulness or meditation to manage stress.",
+        "Wash your hands regularly to prevent infections.",
+    ]
+    return render_template('health_tips.html', tips=tips)
 
 # === MAIN ===
 if __name__ == '__main__':

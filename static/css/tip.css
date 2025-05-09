@@ -1,0 +1,56 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+    color: #333;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 20px;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 30px;
+    color: #28a745;
+}
+
+.tip-card {
+    background: #e9f7ef;
+    border-left: 6px solid #28a745;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 10px;
+    transition: background-color 0.3s ease;
+}
+
+.tip-card:hover {
+    background-color: #d4edda;
+}
+
+.tip-card h2 {
+    margin-top: 0;
+    color: #155724;
+}
+
+.btn {
+    display: inline-block;
+    margin-top: 30px;
+    padding: 10px 20px;
+    background-color: rgba(2, 77, 146, 0.85);
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+
+.btn:hover {
+    background-color: rgba(2, 77, 146, 0.85);
+}

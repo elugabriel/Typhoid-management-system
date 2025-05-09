@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Health Tips</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tip.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Health Tips</h1>
+
+        <div class="tip-card">
+            <h2>🧘‍♀️ Stay Physically Active</h2>
+            <p>Engage in at least 30 minutes of moderate exercise daily, such as walking, jogging, or yoga. It helps manage weight, improves mood, and strengthens your heart and muscles.</p>
+        </div>
+
+        <div class="tip-card">
+            <h2>🥦 Eat a Balanced Diet</h2>
+            <p>Include fruits, vegetables, lean proteins, and whole grains in your meals. Avoid excessive sugar, salt, and processed foods.</p>
+        </div>
+
+        <div class="tip-card">
+            <h2>💧 Stay Hydrated</h2>
+            <p>Drink at least 8 glasses of water a day. Hydration supports digestion, skin health, and overall energy levels.</p>
+        </div>
+
+        <div class="tip-card">
+            <h2>😴 Get Enough Sleep</h2>
+            <p>Aim for 7–9 hours of quality sleep each night. Good sleep boosts immunity, mental clarity, and emotional well-being.</p>
+        </div>
+
+        <div class="tip-card">
+            <h2>🧠 Manage Stress</h2>
+            <p>Practice relaxation techniques like deep breathing, meditation, or spending time with loved ones to reduce stress and anxiety.</p>
+        </div>
+
+        <div class="tip-card">
+            <h2>🚭 Avoid Smoking & Limit Alcohol</h2>
+            <p>Quit smoking and limit alcohol intake to reduce the risk of chronic diseases and improve long-term health outcomes.</p>
+        </div>
+
+        <a href="{{ url_for('user_dashboard') }}" class="btn">← Back to Dashboard</a>
+    </div>
+</body>
+</html>
