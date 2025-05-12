@@ -9,8 +9,12 @@ import os
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
 import random 
+from flask import session
 
 # === App Config ===
+
+ADMIN_EMAIL = "admin@managementsystem.com"
+ADMIN_PASSWORD = "securepassword123"
 
 
 app = Flask(__name__)
@@ -46,28 +50,24 @@ class Hospital(db.Model):
 
     def __repr__(self):
         return f'<Hospital {self.name}>'
-
 class Doctor(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(120), nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    phone = db.Column(db.String(15), nullable=False)
-    dob = db.Column(db.Date, nullable=False)
-    gender = db.Column(db.String(10), nullable=False)
-    marital_status = db.Column(db.String(20), nullable=False)
-    address = db.Column(db.String(200), nullable=False)
-    state = db.Column(db.String(50), nullable=False)  # This field links doctors to their state
-    hospital_id = db.Column(db.Integer, db.ForeignKey('hospital.id'), nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
+    name = db.Column(db.String(100))
+    email = db.Column(db.String(100))
+    phone = db.Column(db.String(20))
+    dob = db.Column(db.Date)
+    gender = db.Column(db.String(10))
+    marital_status = db.Column(db.String(20))
+    address = db.Column(db.String(200))
+    state = db.Column(db.String(50))
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospital.id'))
+    password = db.Column(db.String(200))  # <-- Add this line
 
-    hospital = db.relationship('Hospital', backref=db.backref('doctors', lazy=True))
-
-    def __repr__(self):
-        return f'<Doctor {self.name}>'
+    hospital = db.relationship('Hospital', backref='doctors')
 
 
-    def __repr__(self):
-        return f'<Doctor {self.name}>'
+def __repr__(self):
+    return f'<Doctor {self.name}>'
     
 class SymptomAssessment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -118,6 +118,7 @@ class DoctorSignUpForm(FlaskForm):
     password = PasswordField('Password', validators=[DataRequired(), Length(min=8)])
     submit = SubmitField('Sign Up as Doctor')
 
+
 class LoginForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email()])
     password = PasswordField('Password', validators=[DataRequired()])
@@ -144,8 +145,31 @@ class ConsultationBookingForm(FlaskForm):
     doctor_id = SelectField('Select Doctor', coerce=int, validators=[DataRequired()])
     submit = SubmitField('Book Consultation')
 
+class AdminLoginForm(FlaskForm):
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    submit = SubmitField('Login')
     
-# === ROUTES ===
+class HospitalForm(FlaskForm):
+    name = StringField('Hospital Name', validators=[DataRequired(), Length(max=100)])
+    state = StringField('State', validators=[DataRequired(), Length(max=50)])
+    address = StringField('Address', validators=[Length(max=200)])
+    phone = StringField('Phone', validators=[Length(max=15)])  
+    submit = SubmitField('Create Hospital')
+
+class EditDoctorForm(FlaskForm):
+    name = StringField('Name', validators=[DataRequired()])
+    phone = StringField('Phone', validators=[DataRequired()])
+    dob = DateField('Date of Birth', validators=[DataRequired()])
+    gender = SelectField('Gender', choices=[('Male', 'Male'), ('Female', 'Female')], validators=[DataRequired()])
+    marital_status = SelectField('Marital Status', choices=[('Single', 'Single'), ('Married', 'Married')], validators=[DataRequired()])
+    address = StringField('Address', validators=[DataRequired()])
+    state = StringField('State', validators=[DataRequired()])
+    password = PasswordField('Password')  # Optional for updates
+    hospital_id = SelectField('Hospital', coerce=int, validators=[DataRequired()])
+    submit = SubmitField('Update')
+    
+# ===User  ROUTES ===
 @app.route('/')
 def home():
     return render_template('index.html')
@@ -349,6 +373,151 @@ def health_tips():
         "Wash your hands regularly to prevent infections.",
     ]
     return render_template('health_tips.html', tips=tips)
+
+# ======== Admin section ========
+
+@app.route('/admin/dashboard')
+def admin_dashboard():
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+
+    # Query the required data
+    total_users = User.query.count()
+    total_doctors = Doctor.query.count()
+    total_assessments = SymptomAssessment.query.count()
+    total_bookings = Consultation.query.count() if 'Consultation' in globals() else 0
+    users = User.query.all()
+    doctors = Doctor.query.all()
+
+    # Pass all required data to the template
+    return render_template(
+        'admin_dashboard.html',
+        total_users=total_users,
+        total_doctors=total_doctors,
+        total_assessments=total_assessments,
+        total_bookings=total_bookings,
+        users=users,
+        doctors=doctors
+    )
+
+
+# ADMIN_EMAIL = "admin@managementsystem.com"
+# ADMIN_PASSWORD = "securepassword123"
+
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    form = AdminLoginForm()
+    if form.validate_on_submit():
+        if form.email.data == ADMIN_EMAIL and form.password.data == ADMIN_PASSWORD:
+            session['admin_logged_in'] = True
+            flash('Admin login successful!', 'success')
+            return redirect(url_for('admin_dashboard'))
+        else:
+            flash('Invalid admin credentials', 'danger')
+    return render_template('admin_login.html', form=form)  
+
+
+
+from functools import wraps
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('admin_logged_in'):
+            flash('Admin login required.', 'warning')
+            return redirect(url_for('admin_login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route('/admin/create-hospital', methods=['GET', 'POST'])
+def create_hospital():
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    form = HospitalForm()
+    if form.validate_on_submit():
+        new_hospital = Hospital(
+            name=form.name.data,
+            state=form.state.data,
+            address=form.address.data,
+            phone=form.phone.data
+        )
+        db.session.add(new_hospital)
+        db.session.commit()
+        flash('Hospital created successfully!', 'success')
+        return redirect(url_for('admin_dashboard'))
+    return render_template('create_hospital.html', form=form)
+
+@app.route('/admin/create-doctor', methods=['GET', 'POST'])
+def create_doctor():
+    form = DoctorSignUpForm()
+    if form.validate_on_submit():
+        doctor = Doctor(
+            name=form.name.data,
+            email=form.email.data,
+            phone=form.phone.data,
+            dob=form.dob.data,
+            gender=form.gender.data,
+            marital_status=form.marital_status.data,
+            address=form.address.data,
+            state=form.state.data,
+            hospital_id=form.hospital_id.data,
+            password = form.password.data
+        )
+        # doctor.set_password(form.password.data)  # Assuming Doctor model has set_password()
+        db.session.add(doctor)
+        db.session.commit()
+        flash('Doctor created successfully!', 'success')
+        return redirect(url_for('admin_dashboard'))
+    return render_template('create_doctor.html', form=form)
+
+@app.route('/admin/logout')
+def admin_logout():
+    session.pop('admin_logged_in', None)
+    flash('You have been logged out.', 'info')
+    return redirect(url_for('home'))
+
+
+# Route to edit doctor
+@app.route('/admin/edit_doctor/<int:doctor_id>', methods=['GET', 'POST'])
+def edit_doctor(doctor_id):
+    doctor = Doctor.query.get_or_404(doctor_id)
+    form = EditDoctorForm(obj=doctor)
+
+    # Populate the hospital_id choices BEFORE validation
+    hospitals = Hospital.query.all()
+    form.hospital_id.choices = [(h.id, h.name) for h in hospitals]
+
+    if form.validate_on_submit():
+        doctor.name = form.name.data
+        doctor.phone = form.phone.data
+        doctor.dob = form.dob.data
+        doctor.gender = form.gender.data
+        doctor.marital_status = form.marital_status.data
+        doctor.address = form.address.data
+        doctor.state = form.state.data
+
+        if form.password.data:
+            doctor.password = form.password.data  # Plain text (note: not recommended for production)
+
+        doctor.hospital_id = form.hospital_id.data
+
+        db.session.commit()
+        flash('Doctor updated successfully.')
+        return redirect(url_for('admin_dashboard'))
+
+    return render_template('edit_doctor.html', form=form)
+
+
+
+
+# Route to delete doctor
+@app.route('/admin/delete_doctor/<int:doctor_id>', methods=['POST'])
+def delete_doctor(doctor_id):
+    doctor = Doctor.query.get_or_404(doctor_id)
+    db.session.delete(doctor)
+    db.session.commit()
+    flash('Doctor deleted successfully.')
+    return redirect(url_for('admin_dashboard'))
 
 # === MAIN ===
 if __name__ == '__main__':

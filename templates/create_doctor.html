@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Create Doctor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .form-container {
+            max-width: 700px;
+            margin: 50px auto;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .form-title {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .btn-primary {
+            width: 100%;
+        }
+
+        .back-link {
+            display: block;
+            margin-top: 15px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="form-container">
+    <h2 class="form-title">Create Doctor</h2>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+
+        <div class="form-group">
+            {{ form.name.label }} {{ form.name(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.email.label }} {{ form.email(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.phone.label }} {{ form.phone(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.dob.label }} {{ form.dob(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.gender.label }} {{ form.gender(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.marital_status.label }} {{ form.marital_status(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.address.label }} {{ form.address(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.state.label }} {{ form.state(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.hospital_id.label }} {{ form.hospital_id(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.password.label }} {{ form.password(class="form-control") }}
+        </div>
+
+        {{ form.submit(class="btn btn-primary") }}
+        <a href="{{ url_for('admin_dashboard') }}" class="back-link">← Back to Dashboard</a>
+    </form>
+</div>
+
+</body>
+</html>

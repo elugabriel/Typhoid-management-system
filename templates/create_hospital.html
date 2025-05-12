@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Hospital</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tip.css') }}">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container mt-5">
+    <h2>Create Hospital</h2>
+    <form method="POST" action="">
+        {{ form.hidden_tag() }}
+
+        <div class="form-group">
+            {{ form.name.label }} {{ form.name(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.state.label }} {{ form.state(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.address.label }} {{ form.address(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.phone.label }} {{ form.phone(class="form-control") }}
+        </div>
+        {{ form.submit(class="btn btn-primary") }}
+        <div><a href="{{ url_for('admin_dashboard') }}" class="back-link">← Back to Dashboard</a></div>
+        
+    </form>
+</div>
+</body>
+</html>
