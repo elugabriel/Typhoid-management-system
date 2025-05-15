@@ -10,6 +10,7 @@ from flask_login import LoginManager, login_user, login_required, logout_user, c
 from werkzeug.security import check_password_hash, generate_password_hash
 import random 
 from flask import session
+from datetime import datetime
 
 # === App Config ===
 
@@ -64,6 +65,22 @@ class Doctor(db.Model):
     password = db.Column(db.String(200))  # <-- Add this line
 
     hospital = db.relationship('Hospital', backref='doctors')
+    
+    def get_id(self):
+        return str(self.id)
+
+    # These come from UserMixin, but include manually if needed:
+    @property
+    def is_active(self):
+        return True
+
+    @property
+    def is_authenticated(self):
+        return True
+
+    @property
+    def is_anonymous(self):
+        return False
 
 
 def __repr__(self):
@@ -80,16 +97,15 @@ class SymptomAssessment(db.Model):
 
 class Consultation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    doctor_id = db.Column(db.Integer, db.ForeignKey('doctor.id'), nullable=False)
-    status = db.Column(db.String(20), default='Pending')
-    consultation_date = db.Column(db.DateTime, default=db.func.now())
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    doctor_id = db.Column(db.Integer, db.ForeignKey('doctor.id'))
+    status = db.Column(db.String(20), default="Pending")  # Pending, Approved, Rejected
+    appointment_date = db.Column(db.Date)
+    appointment_time = db.Column(db.Time)
 
-    user = db.relationship('User', backref=db.backref('consultations', lazy=True))
-    doctor = db.relationship('Doctor', backref=db.backref('consultations', lazy=True))
+    user = db.relationship('User', backref='consultations')
+    doctor = db.relationship('Doctor', backref='consultations')
 
-    def __repr__(self):
-        return f'<Consultation {self.id}>'
 
 
 # === FORMS ===
@@ -169,6 +185,11 @@ class EditDoctorForm(FlaskForm):
     hospital_id = SelectField('Hospital', coerce=int, validators=[DataRequired()])
     submit = SubmitField('Update')
     
+class DoctorLoginForm(FlaskForm):
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    submit = SubmitField('Login')
+    
 # ===User  ROUTES ===
 @app.route('/')
 def home():
@@ -225,7 +246,9 @@ def user_login():  # <-- Changed name here
 @app.route('/dashboard')
 @login_required
 def user_dashboard():
-    return render_template('user_dashboard.html', user=current_user)
+    
+    consultations = Consultation.query.filter_by(user_id=current_user.id).order_by(Consultation.appointment_date.desc()).all()
+    return render_template('user_dashboard.html', user=current_user,  consultations=consultations)
 
 
 @app.route('/update-profile', methods=['GET', 'POST'])
@@ -272,14 +295,14 @@ def book_consultation():
     # Fetch the current user's state
     user_state = current_user.state
 
-    # Fetch doctors based on the user's state
+    # Fetch doctors in the same state
     doctors_in_state = Doctor.query.filter_by(state=user_state).all()
 
-    # Update the doctor selection choices based on the doctors in the user's state
+    # Populate doctor choices in the form
     form.doctor_id.choices = [(doctor.id, doctor.name) for doctor in doctors_in_state]
 
-    # Pre-fill the form with the patient's details
-    if request.method == 'GET':  # On GET request, pre-fill the form
+    # Pre-fill the form with user's details on GET request
+    if request.method == 'GET':
         form.name.data = current_user.name
         form.phone.data = current_user.phone
         form.dob.data = current_user.dob
@@ -288,20 +311,31 @@ def book_consultation():
         form.address.data = current_user.address
         form.state.data = current_user.state
 
+    # Handle form submission
     if form.validate_on_submit():
-        # Automatically assign doctor based on the selected doctor_id
         consultation = Consultation(
             user_id=current_user.id,
-            doctor_id=form.doctor_id.data,  # Get the doctor from the form
-            status="Pending"  # Default status is Pending
+            doctor_id=form.doctor_id.data,
+            status="Pending",
+            appointment_date=datetime.utcnow().date(),
+            appointment_time=datetime.utcnow().time()
         )
         db.session.add(consultation)
         db.session.commit()
         flash('Your consultation has been booked and is pending approval.', 'success')
-        return redirect(url_for('user_dashboard'))
+        return redirect(url_for('consultation_details', consultation_id=consultation.id))
 
     return render_template('user_consultations.html', form=form, user=current_user)
 
+@app.route('/consultation/<int:consultation_id>')
+@login_required
+def consultation_details(consultation_id):
+    consultation = Consultation.query.get_or_404(consultation_id)
+
+    if consultation.user_id != current_user.id:
+        abort(403)  # Forbidden if user tries to access someone else's record
+
+    return render_template('consultation_details.html', consultation=consultation)
 
 #======= Expert System Part ========
 SYMPTOM_RULES = {
@@ -518,6 +552,65 @@ def delete_doctor(doctor_id):
     db.session.commit()
     flash('Doctor deleted successfully.')
     return redirect(url_for('admin_dashboard'))
+
+# === Doctor section ===
+@login_manager.user_loader
+def load_user(user_id):
+    user = User.query.get(int(user_id))
+    if user:
+        return user
+    return Doctor.query.get(int(user_id))  # fallback
+
+@app.route('/doctor-login', methods=['GET', 'POST'])
+def doctor_login():
+    form = DoctorLoginForm()
+    if form.validate_on_submit():
+        doctor = Doctor.query.filter_by(email=form.email.data).first()
+        if doctor and doctor.password == form.password.data:
+            login_user(doctor)
+            return redirect(url_for('doctor_dashboard'))
+        else:
+            flash('Invalid email or password', 'danger')
+    return render_template('doctor_login.html', form=form)
+
+@app.route('/doctor-dashboard')
+@login_required
+def doctor_dashboard():
+    if not isinstance(current_user, Doctor):
+        flash("Access denied: Not a doctor account.", "danger")
+        return redirect(url_for('index'))
+
+    consultations = Consultation.query.filter_by(doctor_id=current_user.id).all()
+    return render_template('doctor_dashboard.html', consultations=consultations, doctor=current_user)
+
+@app.route('/approve/<int:consultation_id>')
+@login_required
+def approve_appointment(consultation_id):
+    consultation = Consultation.query.get_or_404(consultation_id)
+
+    if not isinstance(current_user, Doctor) or consultation.doctor_id != current_user.id:
+        flash("Unauthorized action.", "danger")
+        return redirect(url_for('doctor_dashboard'))
+
+    consultation.status = "Approved"
+    db.session.commit()
+    flash("Appointment approved.", "success")
+    return redirect(url_for('doctor_dashboard'))
+
+@app.route('/reject/<int:consultation_id>')
+@login_required
+def reject_appointment(consultation_id):
+    consultation = Consultation.query.get_or_404(consultation_id)
+
+    if not isinstance(current_user, Doctor) or consultation.doctor_id != current_user.id:
+        flash("Unauthorized action.", "danger")
+        return redirect(url_for('doctor_dashboard'))
+
+    consultation.status = "Rejected"
+    db.session.commit()
+    flash("Appointment rejected.", "warning")
+    return redirect(url_for('doctor_dashboard'))
+
 
 # === MAIN ===
 if __name__ == '__main__':
