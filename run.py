@@ -83,8 +83,8 @@ class Doctor(db.Model):
         return False
 
 
-def __repr__(self):
-    return f'<Doctor {self.name}>'
+    def __repr__(self):
+        return f'<Doctor {self.name}>'
     
 class SymptomAssessment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -567,21 +567,26 @@ def doctor_login():
     if form.validate_on_submit():
         doctor = Doctor.query.filter_by(email=form.email.data).first()
         if doctor and doctor.password == form.password.data:
-            login_user(doctor)
+            session['doctor'] = doctor.id  # manually manage session
             return redirect(url_for('doctor_dashboard'))
         else:
             flash('Invalid email or password', 'danger')
     return render_template('doctor_login.html', form=form)
 
-@app.route('/doctor-dashboard')
-@login_required
-def doctor_dashboard():
-    if not isinstance(current_user, Doctor):
-        flash("Access denied: Not a doctor account.", "danger")
-        return redirect(url_for('index'))
 
-    consultations = Consultation.query.filter_by(doctor_id=current_user.id).all()
-    return render_template('doctor_dashboard.html', consultations=consultations, doctor=current_user)
+
+@app.route('/doctor_dashboard')
+def doctor_dashboard():
+    if 'doctor' not in session:
+        return redirect(url_for('doctor_login'))
+    
+    doctor = Doctor.query.get(session['doctor'])
+    consultations = Consultation.query.filter_by(doctor_id=doctor.id).all()
+    
+    return render_template('doctor_dashboard.html', doctor=doctor, consultations=consultations)
+
+
+
 
 @app.route('/approve/<int:consultation_id>')
 @login_required
