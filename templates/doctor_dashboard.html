@@ -1,57 +1,118 @@
-<!-- templates/doctor_dashboard.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Doctor Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        body {
+            background-color: #f8f9fa;
+        }
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .status-approved {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status-rejected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .table-responsive {
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .table thead {
+            background-color: #f8f9fa;
+        }
+        .no-appointments {
+            text-align: center;
+            padding: 2rem;
+            color: #6c757d;
+        }
+    </style>
 </head>
 <body>
-<div class="container mt-4">
-    <h2>Welcome Dr. {{ doctor.name }}</h2>
-    <p class="lead">Here are your consultation appointments:</p>
+    <div class="dashboard-container">
+        <div class="dashboard-header">
+            <div>
+                <h2>Welcome  {{ doctor.name }}</h2>
+                <p class="lead text-muted mb-0">Your consultation appointments</p>
+            </div>
+            <a href="{{ url_for('admin_logout') }}" class="btn btn-outline-danger">Logout</a>
+        </div>
 
-    <div>
-        <a href="{{ url_for('admin_logout') }}" class="btn btn-danger">Logout</a>
+        {% if consultations %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Patient</th>
+                            <th>Contact</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for consultation, user in consultations %}
+                        <tr>
+                            <td>{{ user.name }}</td>
+                            <td>{{ user.phone }}</td>
+                            <td>{{ consultation.appointment_date.strftime('%Y-%m-%d') if consultation.appointment_date else 'Not set' }}</td>
+                            <td>{{ consultation.appointment_time.strftime('%H:%M') if consultation.appointment_time else 'Not set' }}</td>
+                            <td>
+                                <span class="status-badge status-{{ consultation.status|lower }}">
+                                    {{ consultation.status }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if consultation.status == "Pending" %}
+                                    <div class="d-flex gap-2">
+                                        <a href="{{ url_for('approve_appointment', consultation_id=consultation.id) }}" 
+                                           class="btn btn-sm btn-success">Approve</a>
+                                        <a href="{{ url_for('reject_appointment', consultation_id=consultation.id) }}" 
+                                           class="btn btn-sm btn-danger">Reject</a>
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted">No action</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="no-appointments">
+                <p class="fs-5">No appointments scheduled</p>
+                <p class="text-muted">You currently have no consultation appointments</p>
+            </div>
+        {% endif %}
     </div>
-
-    {% if consultations %}
-        <table class="table table-bordered">
-            <thead>
-                <tr>
-                    <th>Patient Name</th>
-                    <th>Phone</th>
-                    <th>Date</th>
-                    <th>Time</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for consultation, user in consultations %}
-                <tr>
-                    <td>{{ user.name }}</td>
-                    <td>{{ user.phone }}</td>
-                    <td>{{ consultation.appointment_date.strftime('%Y-%m-%d') if consultation.appointment_date else 'Not set' }}</td>
-                    <td>{{ consultation.appointment_time.strftime('%H:%M') if consultation.appointment_time else 'Not set' }}</td>
-                    <td>{{ consultation.status }}</td>
-                    <td>
-                        {% if consultation.status == "Pending" %}
-                            <a href="{{ url_for('approve_appointment', consultation_id=consultation.id) }}" 
-                               class="btn btn-success btn-sm">Approve</a>
-                            <a href="{{ url_for('reject_appointment', consultation_id=consultation.id) }}" 
-                               class="btn btn-danger btn-sm">Reject</a>
-                        {% else %}
-                            <span class="text-muted">No action</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <p>No appointments found.</p>
-    {% endif %}
-</div>
 </body>
 </html>
