@@ -11,6 +11,10 @@
     <h2>Welcome Dr. {{ doctor.name }}</h2>
     <p class="lead">Here are your consultation appointments:</p>
 
+    <div>
+        <a href="{{ url_for('admin_logout') }}" class="btn btn-danger">Logout</a>
+    </div>
+
     {% if consultations %}
         <table class="table table-bordered">
             <thead>
@@ -24,17 +28,19 @@
                 </tr>
             </thead>
             <tbody>
-                {% for consult in consultations %}
+                {% for consultation, user in consultations %}
                 <tr>
-                    <td>{{ consult.user.name }}</td>
-                    <td>{{ consult.user.phone }}</td>
-                    <td>{{ consult.appointment_date }}</td>
-                    <td>{{ consult.appointment_time }}</td>
-                    <td>{{ consult.status }}</td>
+                    <td>{{ user.name }}</td>
+                    <td>{{ user.phone }}</td>
+                    <td>{{ consultation.appointment_date.strftime('%Y-%m-%d') if consultation.appointment_date else 'Not set' }}</td>
+                    <td>{{ consultation.appointment_time.strftime('%H:%M') if consultation.appointment_time else 'Not set' }}</td>
+                    <td>{{ consultation.status }}</td>
                     <td>
-                        {% if consult.status == "Pending" %}
-                            <a href="{{ url_for('approve_appointment', consultation_id=consult.id) }}" class="btn btn-success btn-sm">Approve</a>
-                            <a href="{{ url_for('reject_appointment', consultation_id=consult.id) }}" class="btn btn-danger btn-sm">Reject</a>
+                        {% if consultation.status == "Pending" %}
+                            <a href="{{ url_for('approve_appointment', consultation_id=consultation.id) }}" 
+                               class="btn btn-success btn-sm">Approve</a>
+                            <a href="{{ url_for('reject_appointment', consultation_id=consultation.id) }}" 
+                               class="btn btn-danger btn-sm">Reject</a>
                         {% else %}
                             <span class="text-muted">No action</span>
                         {% endif %}
